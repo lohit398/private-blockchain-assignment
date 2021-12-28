@@ -126,20 +126,25 @@ class Blockchain {
     return new Promise(async (resolve, reject) => {
       let time = parseInt(message.split(":")[1]);
       let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-      if (currentTime - time < 300) {
-        if (bitcoinMessage.verify(message, address, signature)) {
-          let starWithOwner = {
-            owner: address,
-            star: star,
-          };
-          let newBlock = new BlockClass.Block(starWithOwner);
-          this._addBlock(newBlock);
-          resolve(newBlock);
+      let chainValidity = await self.validateChain();
+      if (chainValidity === "Your blockchain is absolutely healthy") {
+        if (currentTime - time < 300) {
+          if (bitcoinMessage.verify(message, address, signature)) {
+            let starWithOwner = {
+              owner: address,
+              star: star,
+            };
+            let newBlock = new BlockClass.Block(starWithOwner);
+            this._addBlock(newBlock);
+            resolve(newBlock);
+          } else {
+            reject("Verification Failed!");
+          }
         } else {
-          resolve("Verification Failed!");
+          reject("Message has Expired, exceeded by 5 mins");
         }
       } else {
-        resolve("Message has Expired, exceeded by 5 mins");
+        reject(chainValidity);
       }
     });
   }
@@ -212,7 +217,7 @@ class Blockchain {
     return new Promise((resolve, reject) => {
       self.chain.map(async (block, index) => {
         let blockValidity = await block.validate();
-        if (blockValidity === true) {
+        if (blockValidity === false) {
           errorLog.push(
             "Issue with block " + (index + 1) + ". Invalid hash for the block"
           );
